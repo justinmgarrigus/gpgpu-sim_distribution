@@ -170,11 +170,11 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 "CPTX_END"	printf("ENDING CUSTOM PTX.\n"); BEGIN(IN_COMMENT);
 
 <INITIAL,NOT_OPCODE,IN_INST,IN_FUNC_DECL>{
-\.a\.sync\.aligned TC; yylval->int_value = LOAD_A; return WMMA_DIRECTIVE;
-\.b\.sync\.aligned TC; yylval->int_value = LOAD_B; return WMMA_DIRECTIVE;
-\.c\.sync\.aligned TC; yylval->int_value = LOAD_C; return WMMA_DIRECTIVE;
-\.d\.sync\.aligned TC; yylval->int_value = STORE_D; return WMMA_DIRECTIVE;
-\.mma\.sync\.aligned TC;yylval->int_value=MMA; return WMMA_DIRECTIVE;
+\.a\.sync TC; yylval->int_value = LOAD_A; return WMMA_DIRECTIVE;
+\.b\.sync TC; yylval->int_value = LOAD_B; return WMMA_DIRECTIVE;
+\.c\.sync TC; yylval->int_value = LOAD_C; return WMMA_DIRECTIVE;
+\.d\.sync TC; yylval->int_value = STORE_D; return WMMA_DIRECTIVE;
+\.mma\.sync TC;yylval->int_value=MMA; return WMMA_DIRECTIVE;
 
 \.row TC; yylval->int_value = ROW; return LAYOUT;
 \.col TC; yylval->int_value = COL; return LAYOUT;
