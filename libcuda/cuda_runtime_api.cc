@@ -3035,6 +3035,14 @@ void cuda_runtime_api::extract_ptx_files_using_cuobjdump(CUctx_st *context) {
         "reasons might be\n");
     printf("\t1. CDP is enabled\n");
     printf("\t2. When using PyTorch, PYTORCH_BIN is not set correctly\n");
+    
+    snprintf(command, 1000, 
+        "find . -name '*.ptx' -type f > %s", ptx_list_file_name);
+    printf("Executing command: %s\n", command); 
+    if (system(command) != 0) {
+        printf("Error: command '%s' failed\n", command); 
+        exit(0); 
+    }
   }
 
   std::ifstream infile(ptx_list_file_name);
