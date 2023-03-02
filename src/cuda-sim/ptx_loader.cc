@@ -348,8 +348,10 @@ void gpgpu_context::gpgpu_ptx_info_load_from_filename(const char *filename,
   std::string ptxas_filename(std::string(filename) + "as");
   char buff[1024], extra_flags[1024];
   extra_flags[0] = 0;
-  if (!device_runtime->g_cdp_enabled)
+  if (!device_runtime->g_cdp_enabled) {
+    if (sm_version == 0) sm_version = 70; // TODO
     snprintf(extra_flags, 1024, "--gpu-name=sm_%u", sm_version);
+  }
   else
     snprintf(extra_flags, 1024, "--compile-only --gpu-name=sm_%u", sm_version);
   snprintf(
