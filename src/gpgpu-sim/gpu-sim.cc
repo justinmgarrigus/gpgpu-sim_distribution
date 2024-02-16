@@ -672,7 +672,192 @@ void increment_x_then_y_then_z(dim3 &i, const dim3 &bound) {
   }
 }
 
+// Reads specific values from the file. If the file is not found, exits the
+// program.
+void read_extern_values(
+    char** B_start_ptr, 
+    char** B_end_ptr,  
+    int* conv_batch_size, 
+    int* conv_input_channels, 
+    int* conv_input_rows, 
+    int* conv_input_cols, 
+    int* conv_filter_rows, 
+    int* conv_filter_cols, 
+    int* conv_stride_rows, 
+    int* conv_stride_cols, 
+    int* conv_padding_rows, 
+    int* conv_padding_cols, 
+    int* conv_output_channels) 
+{
+    FILE *extern_vars_file = fopen("EXTERN_VARS.temp", "r"); 
+    assert(extern_vars_file != NULL); 
+    assert(fscanf(extern_vars_file, "B_start_ptr=%p\n", B_start_ptr) != 0);
+    assert(fscanf(extern_vars_file, "B_end_ptr=%p\n", B_end_ptr) != 0); 
+    assert(fscanf(extern_vars_file, "conv_batch_size=%d\n", 
+        conv_batch_size) != 0);
+    assert(fscanf(extern_vars_file, "conv_input_channels=%d\n", 
+        conv_input_channels) != 0);
+    assert(fscanf(extern_vars_file, "conv_input_rows=%d\n", 
+        conv_input_rows) != 0);
+    assert(fscanf(extern_vars_file, "conv_input_cols=%d\n", 
+        conv_input_cols) != 0);
+    assert(fscanf(extern_vars_file, "conv_filter_rows=%d\n", 
+        conv_filter_rows) != 0);
+    assert(fscanf(extern_vars_file, "conv_filter_cols=%d\n", 
+        conv_filter_cols) != 0);
+    assert(fscanf(extern_vars_file, "conv_stride_rows=%d\n", 
+        conv_stride_rows) != 0);
+    assert(fscanf(extern_vars_file, "conv_stride_cols=%d\n", 
+        conv_stride_cols) != 0);
+    assert(fscanf(extern_vars_file, "conv_padding_rows=%d\n", 
+        conv_padding_rows) != 0);
+    assert(fscanf(extern_vars_file, "conv_padding_cols=%d\n", 
+        conv_padding_cols) != 0);
+    assert(fscanf(extern_vars_file, "conv_output_channels=%d\n", 
+        conv_output_channels));
+    fclose(extern_vars_file);
+    printf("UNT (SIM): B_start_ptr received, %p\n", *B_start_ptr);
+    printf("UNT (SIM): B_end_ptr received, %p\n", *B_end_ptr);
+    printf("UNT (SIM): conv_batch_size received, %d\n", *conv_batch_size); 
+    printf("UNT (SIM): conv_input_channels received, %d\n", 
+        *conv_input_channels); 
+    printf("UNT (SIM): conv_input_rows received, %d\n", *conv_input_rows); 
+    printf("UNT (SIM): conv_input_cols received, %d\n", *conv_input_cols); 
+    printf("UNT (SIM): conv_filter_rows received, %d\n", *conv_filter_rows); 
+    printf("UNT (SIM): conv_filter_cols received, %d\n", *conv_filter_cols); 
+    printf("UNT (SIM): conv_stride_rows received, %d\n", *conv_stride_rows); 
+    printf("UNT (SIM): conv_stride_cols received, %d\n", *conv_stride_cols); 
+    printf("UNT (SIM): conv_padding_rows received, %d\n", *conv_padding_rows); 
+    printf("UNT (SIM): conv_padding_cols received, %d\n", *conv_padding_cols); 
+    printf("UNT (SIM): conv_output_channels received, %d\n", 
+        *conv_output_channels);
+}
+
+// Writes specific values to the file. Not needed right now. /*
+/*
+void write_extern_values(int gpgpusim_test_var) {
+    FILE *extern_vars_file = fopen("EXTERN_VARS.temp", "w"); 
+    fprintf(extern_vars_file, "gpgpusim_test_var=%d\n", gpgpusim_test_var); 
+    fclose(extern_vars_file); 
+    printf("UNT (SIM): value written, %d\n", gpgpusim_test_var);
+} 
+*/ 
+
+// Translates an address into a workspace row/column and element ID. Returns
+// 1 if successful (e.g., the address is within the workspace dimensions) or 
+// 0 otherwise (e.g., the address is outside of the workspace dimensions).
+bool gpgpu_sim::workspace_indices(
+    new_addr_type addr, 
+    int* workspace_row, 
+    int* workspace_col, 
+    int* element_id) 
+{
+    char *ptr = (char*)addr; 
+    if (ptr < B_start_ptr || ptr > B_end_ptr)
+        return 0; 
+    
+    // How many elements are in one dot product. 
+    int dprod_size = conv_filter_rows * conv_filter_cols * conv_input_channels; 
+
+    // How many dot products are in a row/column/filter.
+    int dprods_per_row = (conv_input_rows - conv_filter_rows) / 
+        conv_stride_rows + 1; 
+    int dprods_per_col = (conv_input_cols - conv_filter_cols) / 
+        conv_stride_cols + 1; 
+    int num_dprods = dprods_per_row * dprods_per_col; 
+
+    // Predict the starting and ending address of the array based on the size
+    // of the matrix in bytes. TODO: I'm not sure if this factors in the size
+    // of padding added to each row (and column, probably). 
+    int byte_size = 2 * dprod_size * num_dprods;
+    printf("UNT (SIM): byte_size(%d), mat_size(%d)\n", 
+        byte_size, (int)(B_end_ptr - B_start_ptr)); 
+    
+    // assert(byte_size == (int)(B_end_ptr - B_start_ptr));
+
+    // Turn the address into an index into a half-array (e.g., one element is 
+    // two bytes each).
+    int idx = (int)(ptr - B_start_ptr) / 2; 
+
+    // The array is padded by a multiple of 16, while the actual lowered matrix
+    // is not. We must detect if this index points to a padded area. 
+    int pad_amount = 16 - dprod_size % 16; 
+    if (pad_amount == 16) pad_amount = 0;
+    int row_size = dprod_size + pad_amount; 
+    int row_idx = idx % row_size; 
+    if (row_idx >= dprod_size) {
+        // We're within a padded area, so skip. TODO: this should still give
+        // a useful workspace_row and workspace_col.
+        *workspace_row = -1; 
+        *workspace_col = -1; 
+        *element_id = -1;
+    }
+    else {
+        // We're not within a column-padded area. We can subtract out the 
+        // padded area.
+        int widx = idx - (idx / row_size) * pad_amount; 
+        int dprod_idx = widx / dprod_size; 
+        int dprod_elem = widx % dprod_size; 
+
+        *workspace_row = dprod_idx; 
+        *workspace_col = dprod_elem; 
+
+        // The matrix may be row-padded as well. 
+        if (dprod_idx >= num_dprods) {
+            *element_id = -1; 
+        }
+        else {
+            // We're not within a row-padded or column-padded area. 
+            // "row" and "col" here represent the top-left corner of the place
+            // in the input matrix where the values were taken from. 
+            int ro = dprod_idx / dprods_per_col; 
+            int co = dprod_idx % dprods_per_col; 
+            int row = ro * conv_stride_rows; 
+            int col = co * conv_stride_cols; 
+
+            // The actual element within the filter stack can be found with
+            // "dprod_elem", which is 0 for the first element (top-left corner
+            // of channel 0) and "dprod_size - 1" for the last element
+            // (bottom-right of channel "out_channel - 1"). 
+            int crel = dprod_elem % conv_filter_cols; 
+            int rrel = (dprod_elem / conv_filter_cols) % conv_filter_rows;
+            int chrel = dprod_elem / (conv_filter_rows * conv_filter_cols); 
+
+            // Find the absolute position within the larger convolution tensor
+            // from the individual relative parts. 
+            int rowab = row + rrel; 
+            int colab = col + crel; 
+            int chaab = chrel; 
+
+            // Create a single index representing this position. 
+            *element_id = chaab * (conv_input_rows * conv_input_cols) + 
+                rowab * conv_input_cols + colab; 
+        }
+    }
+}
+
 void gpgpu_sim::launch(kernel_info_t *kinfo) {
+  printf("UNT (SIM): Kernel about to launch.\n"); 
+  
+  // Read the values from the file. 
+  // Note that "B_start_ptr" and "B_end_ptr" are properties within the 
+  // "gpgpu_sim" object shared around the rest of the project.
+  read_extern_values(
+    &B_start_ptr, 
+    &B_end_ptr, 
+    &conv_batch_size, 
+    &conv_input_channels, 
+    &conv_input_rows, 
+    &conv_input_cols, 
+    &conv_filter_rows, 
+    &conv_filter_cols, 
+    &conv_stride_rows, 
+    &conv_stride_cols,
+    &conv_padding_rows, 
+    &conv_padding_cols, 
+    &conv_output_channels
+  );
+
   unsigned cta_size = kinfo->threads_per_cta();
   if (cta_size > m_shader_config->n_thread_per_shader) {
     printf(

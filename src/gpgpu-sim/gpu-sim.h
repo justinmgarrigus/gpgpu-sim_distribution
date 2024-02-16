@@ -564,6 +564,31 @@ class gpgpu_sim : public gpgpu_t {
 
   // backward pointer
   class gpgpu_context *gpgpu_ctx;
+    
+  // Parameters relating to lowered matrix-multiplication, for ease of access
+  // across the rest of the project. 
+  char *B_start_ptr; 
+  char *B_end_ptr;
+  int conv_batch_size; 
+  int conv_input_channels; 
+  int conv_input_rows; 
+  int conv_input_cols; 
+  int conv_filter_rows; 
+  int conv_filter_cols; 
+  int conv_stride_rows; 
+  int conv_stride_cols; 
+  int conv_padding_rows; 
+  int conv_padding_cols; 
+  int conv_output_channels; 
+
+  // Method of translating those parameters and an arbitrary address into 
+  // indices for the lowering operation. 
+  bool workspace_indices(
+    new_addr_type addr, 
+    int* workspace_row, 
+    int* workspace_col, 
+    int* element_id
+  ); 
 
  private:
   // clocks

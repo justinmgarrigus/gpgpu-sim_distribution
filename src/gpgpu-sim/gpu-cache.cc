@@ -1685,6 +1685,19 @@ enum cache_request_status l1_cache::access(new_addr_type addr, mem_fetch *mf,
 enum cache_request_status l2_cache::access(new_addr_type addr, mem_fetch *mf,
                                            unsigned time,
                                            std::list<cache_event> &events) {
+  char *ptr = (char*)addr; 
+  if (ptr >= m_gpu->B_start_ptr && ptr <= m_gpu->B_end_ptr) {
+    // This points somewhere inside of the lowered matrix. 
+    int workspace_row, workspace_col, element_id; 
+    m_gpu->workspace_indices(addr, 
+        &workspace_row, &workspace_col, &element_id); 
+    
+    printf("UNT (SIM): within matrix, %p\n", ptr);
+    printf("UNT (SIM):   workspace_row(%d), workspace_col(%d), " \
+           "element_id(%d), ptr(%llu)\n", workspace_row, workspace_col, 
+           element_id, addr); 
+  }
+
   return data_cache::access(addr, mf, time, events);
 }
 
