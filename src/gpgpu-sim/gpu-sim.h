@@ -566,20 +566,20 @@ class gpgpu_sim : public gpgpu_t {
   class gpgpu_context *gpgpu_ctx;
     
   // Parameters relating to lowered matrix-multiplication, for ease of access
-  // across the rest of the project. 
-  char *B_start_ptr; 
-  char *B_end_ptr;
-  int conv_batch_size; 
-  int conv_input_channels; 
-  int conv_input_rows; 
-  int conv_input_cols; 
-  int conv_filter_rows; 
-  int conv_filter_cols; 
-  int conv_stride_rows; 
-  int conv_stride_cols; 
-  int conv_padding_rows; 
-  int conv_padding_cols; 
-  int conv_output_channels; 
+  // across the rest of the project.  
+  unsigned conv_batch_size; 
+  unsigned conv_input_channels; 
+  unsigned conv_input_rows; 
+  unsigned conv_input_cols; 
+  unsigned conv_filter_rows; 
+  unsigned conv_filter_cols; 
+  unsigned conv_stride_rows; 
+  unsigned conv_stride_cols; 
+  unsigned conv_padding_rows; 
+  unsigned conv_padding_cols; 
+  unsigned conv_output_channels; 
+  new_addr_type B_start_ptr; 
+  new_addr_type B_end_ptr;
 
   // Method of translating those parameters and an arbitrary address into 
   // indices for the lowering operation. 
